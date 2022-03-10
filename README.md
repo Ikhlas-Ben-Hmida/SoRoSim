@@ -6,5 +6,3 @@ The examples folder of the toolbox contains some saved linkages and links you ca
 
 More details about the theorey behind the toolbox and some of its applications can be found on:
 https://arxiv.org/abs/2107.05494
-
-This toolbox is created by Anup Teejo Mathew and Ikhlas Ben Hmida
