@@ -9,3 +9,5 @@ https://ieeexplore.ieee.org/document/9895355 or https://doi.org/10.1109/MRA.2022
 
 More details about the theory behind the toolbox and some of its applications can be found on:
 https://arxiv.org/abs/2107.05494
+
+This work was supported in part by US Office of Naval Research Global under Grant N62909-21-1-2033, and in part by the the Khalifa University of Science and Technology under Grants CIRA-2020-074, RC1-2018-KUCARS
