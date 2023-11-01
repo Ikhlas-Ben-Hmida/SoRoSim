@@ -11,3 +11,9 @@ More details about the theory behind the toolbox and some of its applications ca
 https://arxiv.org/abs/2107.05494
 
 This work was supported in part by US Office of Naval Research Global under Grant N62909-21-1-2033, and in part by the the Khalifa University of Science and Technology under Grants CIRA-2020-074, RC1-2018-KUCARS
+
+Useful YouTube links:
+
+https://www.youtube.com/watch?v=qDYrQroxfUk&ab_channel=IEEERoboticsandAutomationSociety
+https://www.youtube.com/watch?v=bkoh8Yfq_vY&t=478s&ab_channel=HamlynSymposiumonMedicalRobotics
+https://www.youtube.com/watch?v=vx3uYiZuuHg&t=3s&ab_channel=ANUPTEEJOMATHEW
