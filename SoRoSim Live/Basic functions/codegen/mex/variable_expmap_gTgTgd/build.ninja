@@ -1,0 +1,50 @@
+# CompilerName=msvc160
+# Mode=optim
+ninja_required_version = 1.3
+
+# Basic folders
+root = .
+builddir = $root\build\win64
+matlabdir = C:\Program Files\MATLAB\R2020a
+startdir = D:\Anup\Post Doc\Soft Robotics Toolbox\SoRoSim V5\Basic functions
+
+# Toolchain information
+cc = cl
+cxx = cl
+linker = link
+linkerxx = link
+
+cflags =  /c /Zp8 /GR /W3 /EHs /nologo /MD /D_CRT_SECURE_NO_DEPRECATE /D_SCL_SECURE_NO_DEPRECATE /D_SECURE_SCL=0   /DMATLAB_MEX_FILE  /DMATLAB_MEX_FILE /O2 /Oy- /DNDEBUG /fp:strict /I "$root" /I "$startdir" /I "$root\interface" /I "$matlabdir\extern\include" /I "." -DMODEL=variable_expmap_gTgTgd_mex  
+
+cxxflags =   /c /Zp8 /GR /W3 /EHs /nologo /MD /D_CRT_SECURE_NO_DEPRECATE /D_SCL_SECURE_NO_DEPRECATE /D_SECURE_SCL=0   /DMATLAB_MEX_FILE  /DMATLAB_MEX_FILE /O2 /Oy- /DNDEBUG /fp:strict /I "$root" /I "$startdir" /I "$root\interface" /I "$matlabdir\extern\include" /I "." -DMODEL=variable_expmap_gTgTgd_mex  
+
+ldflags =  /nologo /manifest   /DLL /LIBPATH:"$matlabdir\extern\lib\win64\microsoft" libmx.lib libmex.lib libmat.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib  /out:"variable_expmap_gTgTgd_mex.mexw64" libemlrt.lib libcovrt.lib libut.lib libmwmathutil.lib  /export:mexFunction /export:mexfilerequiredapiversion /export:emlrtMexFcnProperties /export:variable_expmap_gTgTgd_initialize /export:variable_expmap_gTgTgd_terminate /export:variable_expmap_gTgTgd_atexit /export:variable_expmap_gTgTgd
+
+# Build Rules
+rule cc
+    command = $cc $cflags $in /Fo$out
+
+rule cxx
+    command = $cxx $cxxflags $in /Fo$out
+
+rule link
+    command = $linker @$out.rsp $ldflags
+    rspfile = $out.rsp
+    rspfile_content = $in
+
+rule linkxx
+    command = $linkerxx $in $ldflags
+
+# Build
+build $builddir\rt_nonfinite.obj : cc $root\rt_nonfinite.c
+build $builddir\variable_expmap_gTgTgd_data.obj : cc $root\variable_expmap_gTgTgd_data.c
+build $builddir\variable_expmap_gTgTgd_initialize.obj : cc $root\variable_expmap_gTgTgd_initialize.c
+build $builddir\variable_expmap_gTgTgd_terminate.obj : cc $root\variable_expmap_gTgTgd_terminate.c
+build $builddir\variable_expmap_gTgTgd.obj : cc $root\variable_expmap_gTgTgd.c
+build $builddir\_coder_variable_expmap_gTgTgd_api.obj : cc $root\interface\_coder_variable_expmap_gTgTgd_api.c
+build $builddir\_coder_variable_expmap_gTgTgd_mex.obj : cc $root\interface\_coder_variable_expmap_gTgTgd_mex.c
+build $builddir\_coder_variable_expmap_gTgTgd_info.obj : cc $root\interface\_coder_variable_expmap_gTgTgd_info.c
+build $builddir\c_mexapi_version.obj : cc $matlabdir\extern\version\c_mexapi_version.c
+
+# Link
+build $root\variable_expmap_gTgTgd_mex.mexw64 : link $builddir\rt_nonfinite.obj $builddir\variable_expmap_gTgTgd_data.obj $builddir\variable_expmap_gTgTgd_initialize.obj $builddir\variable_expmap_gTgTgd_terminate.obj $builddir\variable_expmap_gTgTgd.obj $builddir\_coder_variable_expmap_gTgTgd_api.obj $builddir\_coder_variable_expmap_gTgTgd_mex.obj $builddir\_coder_variable_expmap_gTgTgd_info.obj $builddir\c_mexapi_version.obj 
