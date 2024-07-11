@@ -398,7 +398,9 @@ classdef SorosimLinkage
                             if ~vrgood
                                 uiwait(msgbox('WRONG INPUTS','Error','error'))
                             else
-                                Tr.CVTwists{linknum}(divnum+1).Xadd = [Tr.CVTwists{linknum}(divnum+1).Xadd;X1];
+                                if Tr.VLinks(Tr.LinkIndex(linknum)).linktype=='s'
+                                    Tr.CVTwists{linknum}(divnum+1).Xadd = [Tr.CVTwists{linknum}(divnum+1).Xadd;X1];
+                                end
                             end
 
                         end
