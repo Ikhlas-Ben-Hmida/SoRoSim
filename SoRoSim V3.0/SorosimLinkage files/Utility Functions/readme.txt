@@ -1,1 +1,0 @@
-This folder contains utility functions used during Sorosim Linkage creation
