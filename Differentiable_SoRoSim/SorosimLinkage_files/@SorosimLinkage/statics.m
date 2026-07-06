@@ -122,7 +122,7 @@ if Linkage.nCLj > 0
     varsToSave{end+1} = 'lambda';
 end
 
-if staticsOptions.plot
+if staticsOptions.save
     save('StaticsSolution.mat', varsToSave{:});
 end
 
