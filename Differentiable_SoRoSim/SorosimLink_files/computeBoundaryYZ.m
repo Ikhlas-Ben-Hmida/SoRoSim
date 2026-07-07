@@ -50,6 +50,17 @@ elseif Link.CS=='E'
     y     = a*sin(theta);
     z     = b*cos(theta);
 
+elseif Link.CS == 'am_isupport'
+    if Link.linktype == 'r'
+        r_fn  = Link.r;
+    else
+        j = varargin{1}; %division number
+        r_fn  = Link.r{j};
+    end
+    r     = r_fn(X);
+    theta = linspace(0,2*pi,n_r);
+    y     = r*sin(theta);
+    z     = r*cos(theta);
 end
 
 end

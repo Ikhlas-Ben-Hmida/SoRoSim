@@ -1,6 +1,11 @@
 %Class to define a SorosimLink
 %A SorosimLink consists of a rigid joint and a body.
 %Last modified by Anup Teejo Mathew 27.11.2024
+%Modified to add the 'am_isupport' cross section (CS='am_isupport'):
+%N annular pneumatic chambers at radial distance delta from the centroid,
+%disposed at angular positions theta. Effective area A = N*a and second
+%moments of area follow Alessi, Falotico, Lucantonio, IEEE Access 2023
+%(doi: 10.1109/ACCESS.2023.3266282), Eqs. (33)-(34). Soft links only.
 classdef SorosimLink < handle %pass by reference (no copy of memory is made)
     
     properties
@@ -15,12 +20,16 @@ classdef SorosimLink < handle %pass by reference (no copy of memory is made)
         
         ld        %Length of each divisions of the link (soft link) [m]
         L         %Total length of the link [m]
-        CS        %Cross section shape: 'R' for rectangular 'C' for circular 'E' for elliptical
-        r         %Radius as a function of X1 (X1=X/L, X1 varies from 0 to 1) [m]
+        CS        %Cross section shape: 'R' for rectangular 'C' for circular 'E' for elliptical 'am_isupport' for AM I-Support (N annular pneumatic chambers)
+        r         %Radius as a function of X1 (X1=X/L, X1 varies from 0 to 1) [m]. For 'am_isupport' it stores the body envelope radius (used only for plotting)
         h         %Height as a function of X1 (X1=X/L, X1 varies from 0 to 1) [m]
         w         %Width as a function of X1 (X1=X/L, X1 varies from 0 to 1) [m]
         a         %Semi-major axis as a function of X1 (X1=X/L, X1 varies from 0 to 1) [m]
         b         %Semi-minor axis as a function of X1 (X1=X/L, X1 varies from 0 to 1) [m]
+        ro        %Outer radius of a pneumatic chamber as a function of X1 (only for 'am_isupport') [m]
+        ri        %Inner radius of a pneumatic chamber as a function of X1 (only for 'am_isupport') [m]
+        delta     %Radial distance of the chamber centres from the cross-section centroid (only for 'am_isupport') [m]
+        theta     %(1xN) angular positions of the chamber centres wrt the local y axis (only for 'am_isupport') [rad]
         cx        %Local translation in the x direction from the base frame to the CM (only used for plotting, applicable to default rigid bodies)
         gi        %Fixed transformation from joint (X=1) to center of mass for ridig link to center of area for soft link
         gf        %Fixed transformation to the tip from center of mass for ridig link from center of area for soft link
@@ -86,6 +95,11 @@ classdef SorosimLink < handle %pass by reference (no copy of memory is made)
                             L            = eval(answer{5});
                             
                             badanswer = LinkInputCheck(jointtype,CS,Kj,badanswer);
+                            
+                            if strcmp(CS,'am_isupport')
+                                uiwait(msgbox('The AM I-Support cross section is available only for soft links','Error','error'));
+                                badanswer = true;
+                            end
                             
                             if L<0
                                 uiwait(msgbox('In a classical universe, length cannot be negative','Error','error'));
@@ -229,7 +243,7 @@ classdef SorosimLink < handle %pass by reference (no copy of memory is made)
                         while badanswer
                             
                             prompt           = {'Joint type (Enter (R) for Revolute,(P) for Prismatic, (H) for Helical, (C) for Cylindrical, (A) for Planar, (S) for Spherical, (F) for Free motion and (N) for Fixed):',...
-                                                'Cross-section shape (C for circular, R for rectangular, E for elliptical):','Joint stiffness (matrix) [Nm/rad or N/m]:',...    
+                                                'Cross-section shape (C for circular, R for rectangular, E for elliptical, am_isupport for AM I-Support):','Joint stiffness (matrix) [Nm/rad or N/m]:',...    
                                                 'Number of divisions:',...
                                                 'Density (kg/m^3):','Youngs Modulus (N/m^2)','Poissons Ratio:','Material Damping (Pa.s)(for dynamic simulation):'};
                             dlgtitle         = 'Soft Link Properties';
@@ -276,6 +290,7 @@ classdef SorosimLink < handle %pass by reference (no copy of memory is made)
                         r    = cell(1,ndiv);
                         h    = cell(1,ndiv); w  = cell(1,ndiv);
                         a    = cell(1,ndiv); b  = cell(1,ndiv);
+                        roc  = cell(1,ndiv); ric = cell(1,ndiv);
                         gi   = cell(1,ndiv); gf = cell(1,ndiv);
                         
                         for j=1:ndiv
@@ -384,6 +399,56 @@ classdef SorosimLink < handle %pass by reference (no copy of memory is made)
                                 if j==1
                                     A0 = pi*ai_p*bi_p;
                                 end
+                                
+                            elseif strcmp(CS,'am_isupport')
+                                
+                                prompt           = {'Length (m):','Initial outer chamber radius (m):','Final outer chamber radius (m):',...
+                                                    'Initial inner chamber radius (m):','Final inner chamber radius (m):',...
+                                                    'Radial distance of chamber centres, \delta (m):',...
+                                                    'Angular positions of chambers, \theta (deg):',...
+                                                    'Body envelope radius, only for plotting (m):'};
+                                dlgtitle         = ['Enter geometric properties of division ',num2str(j)];
+                                definput         = {'0.19','7.79e-3','7.79e-3','6.39e-3','6.39e-3','20e-3','[90 210 330]','30e-3'};
+                                opts.Interpreter = 'tex';
+                                answer2 = inputdlg(prompt,dlgtitle,[1 70],definput,opts);
+                                if isempty(answer2)
+                                    return
+                                end
+                                ldj      = eval(answer2{1});
+                                ro_i     = eval(answer2{2});
+                                ro_f     = eval(answer2{3});
+                                ri_i     = eval(answer2{4});
+                                ri_f     = eval(answer2{5});
+                                delta_p  = eval(answer2{6});
+                                theta_p  = eval(answer2{7})*pi/180; %stored in rad
+                                renv_p   = eval(answer2{8});
+                                
+                                syms X1
+                                ro_sym = ro_i+X1*(ro_f-ro_i);
+                                ri_sym = ri_i+X1*(ri_f-ri_i);
+    
+                                if has(ro_sym,X1)
+                                    ro_fn = matlabFunction(ro_sym);
+                                else
+                                    ro_fn = str2func(['@(X1)' num2str(ro_i)]);
+                                end
+    
+                                if has(ri_sym,X1)
+                                    ri_fn = matlabFunction(ri_sym);
+                                else
+                                    ri_fn = str2func(['@(X1)' num2str(ri_i)]);
+                                end
+                                
+                                roc{j} = ro_fn;
+                                ric{j} = ri_fn;
+                                r{j}   = str2func(['@(X1)' num2str(renv_p)]); %body envelope radius (only used for plotting)
+                                
+                                Link.delta = delta_p;
+                                Link.theta = theta_p;
+                                
+                                if j==1
+                                    A0 = length(theta_p)*pi*(ro_i^2-ri_i^2); %effective area A = N*a
+                                end
                             end
                             
                             ld{j}     = ldj;
@@ -399,6 +464,8 @@ classdef SorosimLink < handle %pass by reference (no copy of memory is made)
                         Link.h   = h;
                         Link.a   = a;
                         Link.b   = b;
+                        Link.ro  = roc;
+                        Link.ri  = ric;
                         Link.gi  = gi;
                         Link.gf  = gf;
                         Lscale = (A0*Link.L).^(1/3);
@@ -416,7 +483,11 @@ classdef SorosimLink < handle %pass by reference (no copy of memory is made)
                     Link.CPF    = false;
                     Link.PlotFn = @(g) CustomShapePlot(g);
                     Link.Lscale = Lscale;
-                    plotLink(Link)
+                    try
+                        plotLink(Link)
+                    catch
+                        warning('plotLink could not render this cross section. Extend the circular branch of plotLink to include CS=''am_isupport'' (Link.r stores the envelope radius).');
+                    end
             else
                 if strcmp(varargin{1}, 'empty')
                     disp('Creating empty SorosimLink');
@@ -472,6 +543,34 @@ classdef SorosimLink < handle %pass by reference (no copy of memory is made)
         %Changing b:
         function set.b(SorosimLink, value)
             SorosimLink.b = value;
+            SorosimLink.Update()
+            notify(SorosimLink, 'PropertyChanged');
+        end
+        
+        %Changing ro (only for 'am_isupport'):
+        function set.ro(SorosimLink, value)
+            SorosimLink.ro = value;
+            SorosimLink.Update()
+            notify(SorosimLink, 'PropertyChanged');
+        end
+        
+        %Changing ri (only for 'am_isupport'):
+        function set.ri(SorosimLink, value)
+            SorosimLink.ri = value;
+            SorosimLink.Update()
+            notify(SorosimLink, 'PropertyChanged');
+        end
+        
+        %Changing delta (only for 'am_isupport'):
+        function set.delta(SorosimLink, value)
+            SorosimLink.delta = value;
+            SorosimLink.Update()
+            notify(SorosimLink, 'PropertyChanged');
+        end
+        
+        %Changing theta (only for 'am_isupport'):
+        function set.theta(SorosimLink, value)
+            SorosimLink.theta = value;
             SorosimLink.Update()
             notify(SorosimLink, 'PropertyChanged');
         end

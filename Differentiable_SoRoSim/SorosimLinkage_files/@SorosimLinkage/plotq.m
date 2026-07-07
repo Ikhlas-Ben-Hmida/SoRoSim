@@ -272,5 +272,5 @@ for i=1:N
     end
     g_Ltip((i-1)*4+1:i*4,:) = g_here;
 end
-drawnow
+% drawnow
 end
