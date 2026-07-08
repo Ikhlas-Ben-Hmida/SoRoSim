@@ -77,7 +77,7 @@ for i=1:N
     g_here      = g_here*g_joint;
     
     n_r   = Linkage.VLinks(Linkage.LinkIndex(i)).n_r;
-    if Linkage.VLinks(Linkage.LinkIndex(i)).CS=='R'
+    if strcmp(Linkage.VLinks(Linkage.LinkIndex(i)).CS,'R')
         n_r=5;
     end
 

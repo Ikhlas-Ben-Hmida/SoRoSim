@@ -1,5 +1,7 @@
 %Function that plots the reference configuration
 %Last modified by Anup Teejo Mathew 29.11.2024
+%Modified to also render the annular pneumatic chambers of the
+%'am_isupport' cross section (via computeChamberYZ) in the soft-piece loop.
 
 function plotq0(Linkage,Lh,Dh,CLh)
 
@@ -301,6 +303,8 @@ for i = 1:N
         H       = Xs(2)-Xs(1);
         Z       = 0.5*H;      %2nd order Zanna quadrature coefficient
 
+        is_amis = strcmp(VLinks(LinkIndex(i)).CS,'am_isupport'); %AM I-Support chambers
+
         %cross sectional shape Circular, Rectangular, and Ellipsoidal
         [y,z] = computeBoundaryYZ(VLinks(LinkIndex(i)),0,j);
         pos  = [zeros(1,n_r);y;z;ones(1,n_r)]; %homogeneous positions in local frame 4xn_r
@@ -309,7 +313,18 @@ for i = 1:N
         x_here   = pos(1,:);
         y_here   = pos(2,:);
         z_here   = pos(3,:);
-        plot3(x_here,y_here,z_here,'color',color,'LineWidth',LineWidthValue)
+        if ~is_amis %skip envelope outline for AM I-Support (chambers drawn instead)
+            plot3(x_here,y_here,z_here,'color',color,'LineWidth',LineWidthValue)
+        end
+
+        %AM I-Support: draw the annular pneumatic chambers at X=0
+        if is_amis
+            [Yc,Zc] = computeChamberYZ(VLinks(LinkIndex(i)),0,j);
+            for k=1:numel(Yc)
+                posc = g_here*[zeros(1,numel(Yc{k}));Yc{k};Zc{k};ones(1,numel(Yc{k}))];
+                plot3(posc(1,:),posc(2,:),posc(3,:),'color',color,'LineWidth',LineWidthValue)
+            end
+        end
 
         divisionnumbernotadded=true;
         for ii = 1:n_l-1
@@ -335,8 +350,19 @@ for i = 1:N
             z_here     = pos(3,:);
 
             %plotting soft link pieces
-            plot3(x_here,y_here,z_here,'color',color,'LineWidth',LineWidthValue)
+            if ~is_amis %skip envelope outline for AM I-Support (chambers drawn instead)
+                plot3(x_here,y_here,z_here,'color',color,'LineWidth',LineWidthValue)
+            end
             %hold on
+
+            %AM I-Support: draw the annular pneumatic chambers at this station
+            if is_amis
+                [Yc,Zc] = computeChamberYZ(VLinks(LinkIndex(i)),Xs(ii+1),j);
+                for k=1:numel(Yc)
+                    posc = g_here*[zeros(1,numel(Yc{k}));Yc{k};Zc{k};ones(1,numel(Yc{k}))];
+                    plot3(posc(1,:),posc(2,:),posc(3,:),'color',color,'LineWidth',LineWidthValue)
+                end
+            end
 
             if ii>n_l/2&&divisionnumbernotadded
                 text(g_here(1,4),g_here(2,4),g_here(3,4),num2str(j),'FontSize',10,'FontWeight', 'bold','Color','k','HorizontalAlignment', 'center')
