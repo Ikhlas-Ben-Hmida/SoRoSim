@@ -106,7 +106,7 @@ classdef SorosimLinkage
 
         % --- Friction Properties ---
         use_friction = false;
-        mu = 0.0;
+        mu = 0;
 
     end
     %%

@@ -59,7 +59,18 @@ function Bq = ActuationMatrix(Linkage,q)
             % Setup friction tracking if requested via Linkage properties
             use_friction = isprop(Linkage, 'use_friction') && Linkage.use_friction;
             if use_friction
-                mu = Linkage.mu;
+                mu_array = Linkage.mu;
+                
+                % Format mu_array to strictly map to the soft actuators (1 to n_sact)
+                if isscalar(mu_array)
+                    mu_array = mu_array * ones(Linkage.n_sact, 1);
+                elseif length(mu_array) == nact
+                    % If passed as nact, extract only the soft/cable actuators
+                    mu_array = mu_array(n_jact+1 : end);
+                elseif length(mu_array) ~= Linkage.n_sact
+                    error('ActuationMatrix: Dimension mismatch. Linkage.mu must be a scalar, length nact, or length n_sact.');
+                end
+                
                 gs = Linkage.FwdKinematics(q); % Fetch global poses
                 
                 phi_sum = zeros(Linkage.n_sact, 1);
@@ -99,7 +110,7 @@ function Bq = ActuationMatrix(Linkage,q)
                         if Ws(ii) > 0
                             
                             % 1. Extract current global pose if friction is used
-                            if use_friction && mu > 0
+                            if use_friction
                                 current_g = gs((i_sig-1)*4 + 1 : i_sig*4, :);
                                 r_curr = current_g(1:3, 4);
                                 R_curr = current_g(1:3, 1:3);
@@ -124,38 +135,43 @@ function Bq = ActuationMatrix(Linkage,q)
                                     % Friction Calculation (Model 2: Configuration-Dependent)
                                     friction_weight = 1.0;
                                     
-                                    if use_friction && mu > 0
-                                        if isempty(r_prev{ia})
-                                            % First point initialization
-                                            r_prev{ia} = r_curr;
-                                            R_prev{ia} = R_curr;
-                                            d_prev{ia} = dc;
-                                        else
-                                            % Compute cable force direction vector (p)
-                                            p_curr = (r_curr - r_prev{ia}) + (R_curr * dc) - (R_prev{ia} * d_prev{ia});
-                                            p_norm = norm(p_curr);
-                                            
-                                            if p_norm > 1e-12
-                                                % Normalize to get direction (f)
-                                                f_curr = p_curr / p_norm;
+                                    % Fetch actuator-specific friction coefficient
+                                    if use_friction
+                                        mu_ia = mu_array(ia);
+                                        
+                                        if mu_ia > 0
+                                            if isempty(r_prev{ia})
+                                                % First point initialization
+                                                r_prev{ia} = r_curr;
+                                                R_prev{ia} = R_curr;
+                                                d_prev{ia} = dc;
+                                            else
+                                                % Compute cable force direction vector (p)
+                                                p_curr = (r_curr - r_prev{ia}) + (R_curr * dc) - (R_prev{ia} * d_prev{ia});
+                                                p_norm = norm(p_curr);
                                                 
-                                                if ~isempty(f_prev{ia})
-                                                    % Compute angle between consecutive directions
-                                                    cos_phi = max(min(f_prev{ia}' * f_curr, 1), -1); % Clamp to prevent acos(NaN)
-                                                    phi_l = acos(cos_phi);
-                                                    phi_sum(ia) = phi_sum(ia) + phi_l;
+                                                if p_norm > 1e-12
+                                                    % Normalize to get direction (f)
+                                                    f_curr = p_curr / p_norm;
+                                                    
+                                                    if ~isempty(f_prev{ia})
+                                                        % Compute angle between consecutive directions
+                                                        cos_phi = max(min(f_prev{ia}' * f_curr, 1), -1); % Clamp to prevent acos(NaN)
+                                                        phi_l = acos(cos_phi);
+                                                        phi_sum(ia) = phi_sum(ia) + phi_l;
+                                                    end
+                                                    f_prev{ia} = f_curr;
                                                 end
-                                                f_prev{ia} = f_curr;
+                                                
+                                                % Update trackers for the next Gauss point
+                                                r_prev{ia} = r_curr;
+                                                R_prev{ia} = R_curr;
+                                                d_prev{ia} = dc;
                                             end
                                             
-                                            % Update trackers for the next Gauss point
-                                            r_prev{ia} = r_curr;
-                                            R_prev{ia} = R_curr;
-                                            d_prev{ia} = dc;
+                                            % Apply exponential decay based on cumulative angle
+                                            friction_weight = exp(-mu_ia * phi_sum(ia));
                                         end
-                                        
-                                        % Apply exponential decay based on cumulative angle
-                                        friction_weight = exp(-mu * phi_sum(ia));
                                     end
                                     
                                     % Apply friction weight to spatial actuation column

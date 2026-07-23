@@ -481,7 +481,18 @@ function [y, dynamic_matrices] = my_dynamicsSolver(Linkage, t, qqd, action) %x i
             % Setup friction tracking if requested via Linkage properties
             use_friction = isprop(Linkage, 'use_friction') && Linkage.use_friction;
             if use_friction
-                mu = Linkage.mu;
+                mu_array = Linkage.mu;
+                
+                % Format mu_array to strictly map to the soft actuators (1 to n_sact)
+                if isscalar(mu_array)
+                    mu_array = mu_array * ones(Linkage.n_sact, 1);
+                elseif length(mu_array) == nact
+                    % If passed as nact, extract only the soft/cable actuators
+                    mu_array = mu_array(n_jact+1 : end);
+                elseif length(mu_array) ~= Linkage.n_sact
+                    error('my_dynamicsSolver: Dimension mismatch. Linkage.mu must be a scalar, length nact, or length n_sact.');
+                end
+                
                 phi_sum = zeros(Linkage.n_sact, 1);
                 f_prev  = cell(Linkage.n_sact, 1);
                 r_prev  = cell(Linkage.n_sact, 1);
@@ -520,7 +531,7 @@ function [y, dynamic_matrices] = my_dynamicsSolver(Linkage, t, qqd, action) %x i
                             
                             % 1. Extract current global pose if friction is used
                             % using the ALREADY COMPUTED g matrix from the first loop
-                            if use_friction && mu > 0
+                            if use_friction
                                 current_g = g((i_sig-1)*4 + 1 : i_sig*4, :);
                                 r_curr = current_g(1:3, 4);
                                 R_curr = current_g(1:3, 1:3);
@@ -541,29 +552,34 @@ function [y, dynamic_matrices] = my_dynamicsSolver(Linkage, t, qqd, action) %x i
                                     
                                     friction_weight = 1.0;
                                     
-                                    if use_friction && mu > 0
-                                        if isempty(r_prev{ia})
-                                            r_prev{ia} = r_curr;
-                                            R_prev{ia} = R_curr;
-                                            d_prev{ia} = dc;
-                                        else
-                                            p_curr = (r_curr - r_prev{ia}) + (R_curr * dc) - (R_prev{ia} * d_prev{ia});
-                                            p_norm = norm(p_curr);
-                                            
-                                            if p_norm > 1e-12
-                                                f_curr = p_curr / p_norm;
-                                                if ~isempty(f_prev{ia})
-                                                    cos_phi = max(min(f_prev{ia}' * f_curr, 1), -1);
-                                                    phi_l = acos(cos_phi);
-                                                    phi_sum(ia) = phi_sum(ia) + phi_l;
+                                    % Apply actuator-specific friction coefficient
+                                    if use_friction
+                                        mu_ia = mu_array(ia);
+                                        
+                                        if mu_ia > 0
+                                            if isempty(r_prev{ia})
+                                                r_prev{ia} = r_curr;
+                                                R_prev{ia} = R_curr;
+                                                d_prev{ia} = dc;
+                                            else
+                                                p_curr = (r_curr - r_prev{ia}) + (R_curr * dc) - (R_prev{ia} * d_prev{ia});
+                                                p_norm = norm(p_curr);
+                                                
+                                                if p_norm > 1e-12
+                                                    f_curr = p_curr / p_norm;
+                                                    if ~isempty(f_prev{ia})
+                                                        cos_phi = max(min(f_prev{ia}' * f_curr, 1), -1);
+                                                        phi_l = acos(cos_phi);
+                                                        phi_sum(ia) = phi_sum(ia) + phi_l;
+                                                    end
+                                                    f_prev{ia} = f_curr;
                                                 end
-                                                f_prev{ia} = f_curr;
+                                                r_prev{ia} = r_curr;
+                                                R_prev{ia} = R_curr;
+                                                d_prev{ia} = dc;
                                             end
-                                            r_prev{ia} = r_curr;
-                                            R_prev{ia} = R_curr;
-                                            d_prev{ia} = dc;
+                                            friction_weight = exp(-mu_ia * phi_sum(ia));
                                         end
-                                        friction_weight = exp(-mu * phi_sum(ia));
                                     end
                                     
                                     Phi_a(:,ia_here) = Phi_a_col * friction_weight;
